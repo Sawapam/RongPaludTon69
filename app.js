@@ -66,8 +66,8 @@ let allRows = [];
 
     function updateSummary(summary) {
       setText('totalCandidates', formatNumber(summary.totalCandidates || 0, 0));
-      setText('highestExamScore', formatNumber(summary.highestExamScore || 0, 4));
-      setText('highestTotalScore', formatNumber(summary.highestTotalScore || 0, 4));
+      setText('highestExamScore', formatNumber(summary.highestExamScore || 0, 0));
+      setText('highestTotalScore', formatNumber(summary.highestTotalScore || 0, 2));
       setText('maxServiceText', summary.maxServiceText || '0 ปี 0 เดือน');
       setText(
         'maxMeritStep',
@@ -132,13 +132,13 @@ let allRows = [];
           </td>
           <td>${escapeHtml(row.phoneMasked || '-')}</td>
           <td class="text-left">${escapeHtml(row.examSite || '-')}</td>
-          <td>${formatNumber(row.examScore, 4)}</td>
+          <td>${formatNumber(row.examScore, 0)}</td>
           <td class="text-left">${escapeHtml(row.serviceRoundedText || '-')}</td>
-          <td>${formatNumber(row.serviceScore, 4)}</td>
-          <td>${formatNumber(row.meritScore, 4)}</td>
+          <td>${formatNumber(row.serviceScore, 2)}</td>
+          <td>${formatNumber(row.meritScore, 2)}</td>
           <td>${formatNumber(row.educationScore, 0)}</td>
           <td>${formatNumber(row.disciplineScore, 0)}</td>
-          <td class="score-main">${formatNumber(row.totalScore, 4)}</td>
+          <td class="score-main">${formatNumber(row.totalScore, 2)}</td>
         </tr>
       `).join('');
 
@@ -176,12 +176,12 @@ let allRows = [];
 
       document.getElementById('modalBody').innerHTML = `
         <div class="detail-grid">
-          ${detailItem('คะแนนสอบ', formatNumber(row.examScore, 4))}
+          ${detailItem('คะแนนสอบ', formatNumber(row.examScore, 0))}
           ${detailItem('อายุราชการที่บันทึก', escapeHtml(row.serviceTenureRaw || '-'))}
           ${detailItem('อายุราชการหลังปัดเศษ', escapeHtml(row.serviceRoundedText || '-'))}
-          ${detailItem('คะแนนอายุราชการ', formatNumber(row.serviceScore, 4) + ' / 15')}
+          ${detailItem('คะแนนอายุราชการ', formatNumber(row.serviceScore, 2) + ' / 15')}
           ${detailItem('ความดีความชอบ', formatNumber(row.meritStep, 2) + ' ขั้น')}
-          ${detailItem('คะแนนความดีความชอบ', formatNumber(row.meritScore, 4) + ' / 5')}
+          ${detailItem('คะแนนความดีความชอบ', formatNumber(row.meritScore, 2) + ' / 5')}
           ${detailItem('วุฒิการศึกษา', escapeHtml(row.education || '-'))}
           ${detailItem('คะแนนวุฒิการศึกษา', formatNumber(row.educationScore, 0) + ' / 5')}
           ${detailItem('โทษทางวินัย', escapeHtml(row.discipline || '-'))}
@@ -190,7 +190,7 @@ let allRows = [];
 
         <div class="total-panel">
           <span>คะแนนรวม</span>
-          <strong>${formatNumber(row.totalScore, 4)}</strong>
+          <strong>${formatNumber(row.totalScore, 2)}</strong>
         </div>
 
         <div class="formula-note">
