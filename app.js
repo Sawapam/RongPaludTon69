@@ -1,64 +1,66 @@
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbw7Dzk1CzR0sGwecF52RCffqchc9yHQDurqVudZPbU-baSNJu8vHXV2aNzW6_Z7i08rKA/exec';
 
-let currentRows = [];
+let allRows = [];
+let adminAccessCode = sessionStorage.getItem('rankingAdminKey') || '';
 
 document.addEventListener('DOMContentLoaded', () => {
-  document
-    .getElementById('searchForm')
-    .addEventListener('submit', handleSearch);
+  document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  document.getElementById('refreshBtn').addEventListener('click', loadData);
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+  document.getElementById('searchInput').addEventListener('input', renderFilteredRows);
+  document.getElementById('siteFilter').addEventListener('change', renderFilteredRows);
+  document.getElementById('closeModalBtn').addEventListener('click', closeDetail);
 
-  document
-    .getElementById('clearBtn')
-    .addEventListener('click', resetSearch);
-
-  document
-    .getElementById('closeModalBtn')
-    .addEventListener('click', closeDetail);
-
-  document
-    .getElementById('detailModal')
-    .addEventListener('click', event => {
-      if (event.target.id === 'detailModal') {
-        closeDetail();
-      }
-    });
+  document.getElementById('detailModal').addEventListener('click', event => {
+    if (event.target.id === 'detailModal') closeDetail();
+  });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') {
-      closeDetail();
-    }
+    if (event.key === 'Escape') closeDetail();
   });
+
+  if (adminAccessCode) {
+    showAdminView();
+    loadData();
+  }
 });
 
-async function handleSearch(event) {
+async function handleLogin(event) {
   event.preventDefault();
 
-  const keyword = document
-    .getElementById('searchInput')
-    .value
-    .trim();
+  const code = document.getElementById('accessCode').value.trim();
+  hideLoginError();
 
-  hideMessage();
-  hideResults();
-
-  if (!keyword) {
-    showMessage(
-      'กรุณากรอกชื่อ-สกุล หรือเบอร์โทรศัพท์',
-      'error'
-    );
+  if (!code) {
+    showLoginError('กรุณากรอกรหัสเข้าถึงผู้ดูแลระบบ');
     return;
   }
 
+  adminAccessCode = code;
+  showAdminView();
+
+  const success = await loadData();
+
+  if (success) {
+    sessionStorage.setItem('rankingAdminKey', adminAccessCode);
+    document.getElementById('accessCode').value = '';
+  } else {
+    adminAccessCode = '';
+    sessionStorage.removeItem('rankingAdminKey');
+    showLoginView();
+  }
+}
+
+async function loadData() {
   setLoading(true);
 
   try {
     const separator = GAS_API_URL.includes('?') ? '&' : '?';
-
     const url =
       GAS_API_URL +
       separator +
-      'action=search&q=' +
-      encodeURIComponent(keyword) +
+      'action=ranking&key=' +
+      encodeURIComponent(adminAccessCode) +
       '&_=' +
       Date.now();
 
@@ -69,118 +71,166 @@ async function handleSearch(event) {
     });
 
     if (!response.ok) {
-      throw new Error(
-        'เรียกข้อมูลไม่สำเร็จ HTTP ' + response.status
-      );
+      throw new Error('เรียกข้อมูลไม่สำเร็จ HTTP ' + response.status);
     }
 
     const data = await response.json();
 
     if (!data || !data.success) {
+      if (data && data.unauthorized) {
+        throw new Error('รหัสเข้าถึงผู้ดูแลระบบไม่ถูกต้อง');
+      }
+
       throw new Error(
         data && data.message
           ? data.message
-          : 'ไม่สามารถค้นหาข้อมูลได้'
+          : 'ไม่สามารถอ่านข้อมูลได้'
       );
     }
 
-    currentRows = Array.isArray(data.rows)
-      ? data.rows
-      : [];
+    allRows = Array.isArray(data.rows) ? data.rows : [];
+    updateSummary(data.summary || {});
+    populateSiteFilter((data.summary && data.summary.examSites) || []);
+    renderFilteredRows();
 
-    renderResults(data);
+    document.getElementById('generatedAt').textContent =
+      'อัปเดตข้อมูลล่าสุด ' + (data.generatedAt || '-');
+
+    hideLoginError();
+    return true;
 
   } catch (error) {
-    showMessage(
+    allRows = [];
+    showLoginError(
       error && error.message
         ? error.message
-        : 'เกิดข้อผิดพลาดจากระบบ',
-      'error'
+        : 'เกิดข้อผิดพลาดจากระบบ'
     );
+    return false;
+
   } finally {
     setLoading(false);
   }
 }
 
-function renderResults(data) {
-  if (!currentRows.length) {
-    showMessage(
-      'ไม่พบข้อมูลที่ตรงกับชื่อหรือเบอร์โทรศัพท์นี้',
-      'info'
+function updateSummary(summary) {
+  setText('totalCandidates', formatNumber(summary.totalCandidates || 0, 0));
+  setText('highestExamScore', formatNumber(summary.highestExamScore || 0, 0));
+  setText('highestTotalScore', formatNumber(summary.highestTotalScore || 0, 2));
+  setText('maxServiceText', summary.maxServiceText || '0 ปี 0 เดือน');
+  setText(
+    'maxMeritStep',
+    'ความดีความชอบสูงสุด ' +
+      formatNumber(summary.maxMeritStep || 0, 2) +
+      ' ขั้น'
+  );
+}
+
+function populateSiteFilter(sites) {
+  const select = document.getElementById('siteFilter');
+  const current = select.value;
+
+  select.innerHTML = '<option value="">ทุกสนามสอบ</option>';
+
+  sites.forEach(site => {
+    const option = document.createElement('option');
+    option.value = site;
+    option.textContent = site;
+    select.appendChild(option);
+  });
+
+  if ([...select.options].some(option => option.value === current)) {
+    select.value = current;
+  }
+}
+
+function renderFilteredRows() {
+  const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+  const site = document.getElementById('siteFilter').value;
+
+  const rows = allRows.filter(row => {
+    const searchable = [row.name, row.phone, row.phoneMasked]
+      .map(value => String(value || '').toLowerCase())
+      .join(' ');
+
+    return (
+      (!keyword || searchable.includes(keyword)) &&
+      (!site || row.examSite === site)
     );
+  });
+
+  document.getElementById('resultCount').textContent =
+    'แสดง ' +
+    formatNumber(rows.length, 0) +
+    ' จาก ' +
+    formatNumber(allRows.length, 0) +
+    ' รายการ';
+
+  renderTable(rows);
+}
+
+function renderTable(rows) {
+  const container = document.getElementById('tableContainer');
+
+  if (!rows.length) {
+    container.innerHTML =
+      '<div class="empty-state">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>';
     return;
   }
 
-  const resultSection =
-    document.getElementById('resultSection');
+  const body = rows.map(row => `
+    <tr>
+      <td class="rank-cell">
+        <span class="rank-medal">${rankLabel(row.rank)}</span>
+      </td>
+      <td class="text-left">
+        <button class="name-btn" type="button" onclick="openDetail(${row.sourceRow})">
+          ${escapeHtml(row.name)}
+        </button>
+      </td>
+      <td>${escapeHtml(row.phoneMasked || '-')}</td>
+      <td class="text-left">${escapeHtml(row.examSite || '-')}</td>
+      <td>${formatNumber(row.examScore, 0)}</td>
+      <td class="text-left">${escapeHtml(row.serviceRoundedText || '-')}</td>
+      <td>${formatNumber(row.serviceScore, 2)}</td>
+      <td>${formatNumber(row.meritScore, 2)}</td>
+      <td>${formatNumber(row.educationScore, 0)}</td>
+      <td>${formatNumber(row.disciplineScore, 0)}</td>
+      <td class="score-main">${formatNumber(row.totalScore, 2)}</td>
+    </tr>
+  `).join('');
 
-  const resultList =
-    document.getElementById('resultList');
-
-  const resultMeta =
-    document.getElementById('resultMeta');
-
-  resultMeta.textContent =
-    'พบ ' +
-    formatNumber(data.matchCount || currentRows.length, 0) +
-    ' รายการ • ผู้เข้าสอบทั้งหมด ' +
-    formatNumber(data.totalCandidates || 0, 0) +
-    ' คน • อัปเดต ' +
-    (data.generatedAt || '-');
-
-  resultList.innerHTML = currentRows
-    .map((row, index) => `
-      <button
-        class="result-card"
-        type="button"
-        onclick="openDetail(${index})"
-      >
-        <div class="result-card-top">
-          <div>
-            <h3 class="result-name">
-              ${escapeHtml(row.name || '-')}
-            </h3>
-
-            <div class="result-sub">
-              ${escapeHtml(row.examSite || 'ไม่ระบุสนามสอบ')}
-              •
-              ${escapeHtml(row.phoneMasked || '-')}
-            </div>
-          </div>
-
-          <div class="rank-badge">
-            อันดับที่ ${formatNumber(row.rank, 0)}
-          </div>
-        </div>
-
-        <div class="result-score">
-          <span>คะแนนรวม</span>
-          <strong>
-            ${formatNumber(row.totalScore, 2)}
-          </strong>
-        </div>
-      </button>
-    `)
-    .join('');
-
-  resultSection.classList.remove('hidden');
-
-  resultSection.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-  });
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>อันดับ</th>
+          <th>ชื่อ-สกุล</th>
+          <th>เบอร์โทรศัพท์</th>
+          <th>สนามสอบ</th>
+          <th>คะแนนสอบ</th>
+          <th>อายุราชการ</th>
+          <th>คะแนนอายุราชการ</th>
+          <th>คะแนนความดีฯ</th>
+          <th>วุฒิการศึกษา</th>
+          <th>คะแนนวินัย</th>
+          <th>คะแนนรวม</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
 }
 
-function openDetail(index) {
-  const row = currentRows[index];
+function openDetail(sourceRow) {
+  const row = allRows.find(
+    item => Number(item.sourceRow) === Number(sourceRow)
+  );
 
   if (!row) return;
 
   document.getElementById('modalName').textContent =
-    'อันดับที่ ' +
-    formatNumber(row.rank, 0) +
-    ' — ' +
-    (row.name || '-');
+    'อันดับ ' + row.rank + ' — ' + row.name;
 
   document.getElementById('modalMeta').textContent =
     (row.examSite || 'ไม่ระบุสนามสอบ') +
@@ -189,161 +239,99 @@ function openDetail(index) {
 
   document.getElementById('modalBody').innerHTML = `
     <div class="detail-grid">
-      ${detailItem(
-        'คะแนนสอบ',
-        formatNumber(row.examScore, 0)
-      )}
-
-      ${detailItem(
-        'อายุราชการที่บันทึก',
-        escapeHtml(row.serviceTenureRaw || '-')
-      )}
-
-      ${detailItem(
-        'อายุราชการหลังปัดเศษ',
-        escapeHtml(row.serviceRoundedText || '-')
-      )}
-
-      ${detailItem(
-        'คะแนนอายุราชการ',
-        formatNumber(row.serviceScore, 2) + ' / 15'
-      )}
-
-      ${detailItem(
-        'ความดีความชอบ',
-        formatNumber(row.meritStep, 2) + ' ขั้น'
-      )}
-
-      ${detailItem(
-        'คะแนนความดีความชอบ',
-        formatNumber(row.meritScore, 2) + ' / 5'
-      )}
-
-      ${detailItem(
-        'วุฒิการศึกษา',
-        escapeHtml(row.education || '-')
-      )}
-
-      ${detailItem(
-        'คะแนนวุฒิการศึกษา',
-        formatNumber(row.educationScore, 0) + ' / 5'
-      )}
-
-      ${detailItem(
-        'โทษทางวินัย',
-        escapeHtml(row.discipline || '-')
-      )}
-
-      ${detailItem(
-        'คะแนนวินัย',
-        formatNumber(row.disciplineScore, 0) + ' / 5'
-      )}
+      ${detailItem('คะแนนสอบ', formatNumber(row.examScore, 0))}
+      ${detailItem('อายุราชการที่บันทึก', escapeHtml(row.serviceTenureRaw || '-'))}
+      ${detailItem('อายุราชการหลังปัดเศษ', escapeHtml(row.serviceRoundedText || '-'))}
+      ${detailItem('คะแนนอายุราชการ', formatNumber(row.serviceScore, 2) + ' / 15')}
+      ${detailItem('ความดีความชอบ', formatNumber(row.meritStep, 2) + ' ขั้น')}
+      ${detailItem('คะแนนความดีความชอบ', formatNumber(row.meritScore, 2) + ' / 5')}
+      ${detailItem('วุฒิการศึกษา', escapeHtml(row.education || '-'))}
+      ${detailItem('คะแนนวุฒิการศึกษา', formatNumber(row.educationScore, 0) + ' / 5')}
+      ${detailItem('โทษทางวินัย', escapeHtml(row.discipline || '-'))}
+      ${detailItem('คะแนนวินัย', formatNumber(row.disciplineScore, 0) + ' / 5')}
     </div>
 
     <div class="total-panel">
       <span>คะแนนรวม</span>
-      <strong>
-        ${formatNumber(row.totalScore, 2)}
-      </strong>
+      <strong>${formatNumber(row.totalScore, 2)}</strong>
     </div>
 
     <div class="formula-note">
-      คะแนนรวม = คะแนนสอบ + คะแนนอายุราชการ
-      + คะแนนความดีความชอบ + คะแนนวุฒิการศึกษา
-      + คะแนนโทษทางวินัย
+      คะแนนรวม = คะแนนสอบ + คะแนนอายุราชการ + คะแนนความดีความชอบ
+      + คะแนนวุฒิการศึกษา + คะแนนโทษทางวินัย
     </div>
   `;
 
-  document
-    .getElementById('detailModal')
-    .classList
-    .remove('hidden');
-
+  document.getElementById('detailModal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
 
 function closeDetail() {
-  document
-    .getElementById('detailModal')
-    .classList
-    .add('hidden');
-
+  document.getElementById('detailModal').classList.add('hidden');
   document.body.style.overflow = '';
 }
 
-function resetSearch() {
-  currentRows = [];
-
+function logout() {
+  adminAccessCode = '';
+  allRows = [];
+  sessionStorage.removeItem('rankingAdminKey');
   document.getElementById('searchInput').value = '';
-
-  hideMessage();
-  hideResults();
-
-  document.getElementById('searchInput').focus();
-
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
+  document.getElementById('siteFilter').value = '';
+  showLoginView();
 }
 
-function hideResults() {
-  document
-    .getElementById('resultSection')
-    .classList
-    .add('hidden');
-
-  document.getElementById('resultList').innerHTML = '';
+function showAdminView() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('adminView').classList.remove('hidden');
 }
 
-function showMessage(message, type) {
-  const box = document.getElementById('messageBox');
+function showLoginView() {
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  setTimeout(() => document.getElementById('accessCode').focus(), 0);
+}
 
-  box.className =
-    'message-box ' +
-    (type === 'error' ? 'error' : 'info');
-
+function showLoginError(message) {
+  const box = document.getElementById('loginError');
   box.textContent = message;
+  box.classList.remove('hidden');
 }
 
-function hideMessage() {
-  const box = document.getElementById('messageBox');
-
-  box.className = 'message-box hidden';
+function hideLoginError() {
+  const box = document.getElementById('loginError');
   box.textContent = '';
-}
-
-function setLoading(isLoading) {
-  document
-    .getElementById('loadingOverlay')
-    .classList
-    .toggle('hidden', !isLoading);
-
-  document.getElementById('searchBtn').disabled = isLoading;
+  box.classList.add('hidden');
 }
 
 function detailItem(label, value) {
   return `
     <div class="detail-item">
-      <div class="detail-label">
-        ${escapeHtml(label)}
-      </div>
-
-      <div class="detail-value">
-        ${value}
-      </div>
+      <div class="detail-label">${label}</div>
+      <div class="detail-value">${value}</div>
     </div>
   `;
 }
 
+function rankLabel(rank) {
+  if (rank === 1) return '🥇 1';
+  if (rank === 2) return '🥈 2';
+  if (rank === 3) return '🥉 3';
+  return String(rank);
+}
+
+function setLoading(isLoading) {
+  document.getElementById('loadingOverlay').classList.toggle('hidden', !isLoading);
+  document.getElementById('loginBtn').disabled = isLoading;
+  document.getElementById('refreshBtn').disabled = isLoading;
+}
+
+function setText(id, value) {
+  document.getElementById(id).textContent = value;
+}
+
 function formatNumber(value, decimals) {
   const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    return decimals > 0
-      ? Number(0).toFixed(decimals)
-      : '0';
-  }
+  if (!Number.isFinite(number)) return '0';
 
   return number.toLocaleString('th-TH', {
     minimumFractionDigits: decimals,
