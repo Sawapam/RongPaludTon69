@@ -3,76 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบจัดอันดับผู้สอบแข่งขัน</title>
+  <title>ค้นหาอันดับผู้สอบแข่งขัน</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand">
-        <h1>🏆 ระบบจัดอันดับผู้สอบแข่งขันตำแหน่งรองปลัด ระดับต้น 69</h1>
-        <p id="generatedAt">กำลังอ่านข้อมูล...</p>
+      <div class="brand-mark" aria-hidden="true">🏆</div>
+      <div>
+        <h1>ระบบค้นหาอันดับผู้สอบแข่งขัน</h1>
+        <p>ตำแหน่งรองปลัดเทศบาล ระดับต้น 69</p>
       </div>
-      <button id="refreshBtn" class="refresh-btn" type="button" onclick="loadData()">
-        ↻ โหลดข้อมูลใหม่
-      </button>
     </div>
   </header>
 
-  <main>
-    <section class="summary-strip" aria-label="สรุปข้อมูล">
-      <div class="summary-item">
-        <div class="summary-label">ผู้เข้าสอบทั้งหมด</div>
-        <div id="totalCandidates" class="summary-value">0</div>
-        <div class="summary-sub">คน</div>
+  <main class="page-shell">
+    <section class="search-card">
+      <div class="search-heading">
+        <h2>ตรวจสอบอันดับของคุณ</h2>
+        <p>กรอกชื่อ-สกุล หรือเบอร์โทรศัพท์ที่ใช้สมัครสอบ</p>
       </div>
 
-      <div class="summary-item">
-        <div class="summary-label">คะแนนสอบสูงสุด</div>
-        <div id="highestExamScore" class="summary-value">0</div>
-        <div class="summary-sub">คะแนน</div>
-      </div>
+      <form id="searchForm" class="search-form" novalidate>
+        <label for="searchInput">ชื่อ-สกุล หรือเบอร์โทรศัพท์</label>
 
-      <div class="summary-item">
-        <div class="summary-label">คะแนนรวมสูงสุด</div>
-        <div id="highestTotalScore" class="summary-value">0.00</div>
-        <div class="summary-sub">คะแนน</div>
-      </div>
+        <div class="search-row">
+          <input
+            id="searchInput"
+            name="search"
+            type="search"
+            placeholder="เช่น สมชาย ใจดี หรือ 0812345678"
+            autocomplete="off"
+            required
+          >
 
-      <div class="summary-item">
-        <div class="summary-label">อายุราชการสูงสุด</div>
-        <div id="maxServiceText" class="summary-value" style="font-size:20px">0 ปี 0 เดือน</div>
-        <div id="maxMeritStep" class="summary-sub">ความดีความชอบสูงสุด 0 ขั้น</div>
-      </div>
+          <button id="searchBtn" type="submit">
+            ค้นหา
+          </button>
+        </div>
+
+        <div class="search-note">
+          ระบบจะแสดงเฉพาะข้อมูลที่ตรงกับคำค้นหา
+        </div>
+      </form>
     </section>
 
-    <section class="toolbar">
-      <div class="field">
-        <input id="searchInput" type="search" placeholder="ค้นหาชื่อหรือเบอร์โทรศัพท์..." autocomplete="off">
+    <section id="messageBox" class="message-box hidden" aria-live="polite"></section>
+
+    <section id="resultSection" class="result-section hidden">
+      <div class="result-header">
+        <div>
+          <h2>ผลการค้นหา</h2>
+          <p id="resultMeta"></p>
+        </div>
+
+        <button id="clearBtn" class="secondary-btn" type="button">
+          ค้นหาใหม่
+        </button>
       </div>
 
-      <div class="field">
-        <select id="siteFilter">
-          <option value="">ทุกสนามสอบ</option>
-        </select>
-      </div>
-
-      <div id="resultCount" class="result-count">แสดง 0 รายการ</div>
-    </section>
-
-    <section class="table-card">
-      <div id="tableContainer" class="table-wrap">
-        <div class="empty-state">กำลังเตรียมข้อมูล...</div>
-      </div>
+      <div id="resultList" class="result-list"></div>
     </section>
   </main>
 
-  <div id="loadingOverlay" class="loading-overlay">
+  <div id="loadingOverlay" class="loading-overlay hidden" aria-live="assertive">
     <div class="loading-box">
       <div class="spinner"></div>
-      <strong>กำลังคำนวณและจัดอันดับ</strong>
-      <div class="muted" style="margin-top:6px">กรุณารอสักครู่</div>
+      <strong>กำลังค้นหาและคำนวณอันดับ</strong>
+      <span>กรุณารอสักครู่</span>
     </div>
   </div>
 
@@ -80,14 +79,19 @@
     <div class="modal">
       <div class="modal-header">
         <div>
-          <h2 id="modalName" class="modal-title">รายละเอียดคะแนน</h2>
-          <p id="modalMeta" class="modal-subtitle"></p>
+          <h2 id="modalName">รายละเอียดคะแนน</h2>
+          <p id="modalMeta"></p>
         </div>
-        <button class="close-btn" type="button" onclick="closeDetail()" aria-label="ปิด">×</button>
+
+        <button id="closeModalBtn" class="close-btn" type="button" aria-label="ปิด">
+          ×
+        </button>
       </div>
+
       <div id="modalBody" class="modal-body"></div>
     </div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
