@@ -1,4 +1,4 @@
-const GAS_API_URL = 'วาง_URL_WEB_APP_GAS_ตรงนี้';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbw7Dzk1CzR0sGwecF52RCffqchc9yHQDurqVudZPbU-baSNJu8vHXV2aNzW6_Z7i08rKA/exec';
 
 let allRows = [];
 
