@@ -579,3 +579,99 @@
     padding:22px 17px;
   }
 }
+
+/* Admin V2 */
+.admin-tabs{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:14px;
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#e7edf5;
+}
+.admin-tab{
+  min-height:44px;
+  border:0;
+  border-radius:10px;
+  color:var(--muted);
+  background:transparent;
+  font-weight:800;
+  cursor:pointer;
+}
+.admin-tab.active{
+  color:var(--primary);
+  background:#fff;
+  box-shadow:0 3px 12px rgba(16,24,40,.08);
+}
+.summary-strip{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+.toolbar{
+  grid-template-columns:minmax(240px,1fr) minmax(170px,230px) minmax(160px,210px) auto;
+}
+.status-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:88px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+.status-chip.approved{color:#067647;background:#ecfdf3}
+.status-chip.pending{color:#b54708;background:#fffaeb}
+.status-chip.rejected{color:#b42318;background:#fff1f0}
+.action-btn{
+  border:1px solid #aebccd;
+  border-radius:9px;
+  padding:7px 11px;
+  color:var(--primary);
+  background:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+.modal-wide{width:min(820px,100%)}
+.detail-value input,
+.detail-value select,
+.detail-value textarea{
+  width:100%;
+  min-height:42px;
+  border:1px solid #b8c4d3;
+  border-radius:9px;
+  padding:8px 10px;
+  color:var(--text);
+  background:#fff;
+}
+.detail-value textarea{resize:vertical}
+.modal-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:16px;
+}
+.modal-actions button{
+  min-height:42px;
+  border:0;
+  border-radius:10px;
+  padding:9px 14px;
+  font-weight:800;
+  cursor:pointer;
+}
+.secondary-action{color:var(--primary);background:#eef4fb}
+.approve-btn{color:#fff;background:#067647}
+.pending-btn{color:#7a2e0e;background:#fedf89}
+.reject-btn{color:#fff;background:#b42318}
+
+@media(max-width:1000px){
+  .summary-strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .toolbar{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .admin-tabs{grid-template-columns:1fr}
+  .summary-strip{grid-template-columns:1fr 1fr}
+  .toolbar{grid-template-columns:1fr}
+  .modal-actions{display:grid;grid-template-columns:1fr 1fr}
+}
