@@ -3,29 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบจัดอันดับผู้สอบแข่งขัน — ผู้ดูแลระบบ</title>
+  <title>ระบบบริหารข้อมูลผู้สอบ — ผู้ดูแลระบบ</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
   <section id="loginView" class="login-page">
     <div class="login-card">
       <div class="login-icon">🔐</div>
       <h1>ผู้ดูแลระบบ</h1>
-      <p>ระบบจัดอันดับผู้สอบแข่งขันตำแหน่งรองปลัด ระดับต้น 69</p>
-
+      <p>ระบบบริหารข้อมูลและจัดอันดับผู้สอบตำแหน่งรองปลัด ระดับต้น 69</p>
       <form id="loginForm">
         <label for="accessCode">รหัสเข้าถึงผู้ดูแลระบบ</label>
-        <input
-          id="accessCode"
-          type="password"
-          placeholder="กรอกรหัสเข้าถึง"
-          autocomplete="current-password"
-          required
-        >
+        <input id="accessCode" type="password" placeholder="กรอกรหัสเข้าถึง" autocomplete="current-password" required>
         <button id="loginBtn" type="submit">เข้าสู่ระบบ</button>
       </form>
-
       <div id="loginError" class="login-error hidden"></div>
     </div>
   </section>
@@ -34,10 +25,9 @@
     <header class="app-header">
       <div class="header-inner">
         <div class="brand">
-          <h1>🏆 ระบบจัดอันดับผู้สอบแข่งขันตำแหน่งรองปลัด ระดับต้น 69</h1>
+          <h1>🏆 ระบบบริหารข้อมูลผู้สอบ</h1>
           <p id="generatedAt">กำลังอ่านข้อมูล...</p>
         </div>
-
         <div class="header-actions">
           <button id="refreshBtn" class="refresh-btn" type="button">↻ โหลดข้อมูลใหม่</button>
           <button id="logoutBtn" class="logout-btn" type="button">ออกจากระบบ</button>
@@ -46,70 +36,42 @@
     </header>
 
     <main>
-      <section class="summary-strip" aria-label="สรุปข้อมูล">
-        <div class="summary-item">
-          <div class="summary-label">ผู้เข้าสอบทั้งหมด</div>
-          <div id="totalCandidates" class="summary-value">0</div>
-          <div class="summary-sub">คน</div>
-        </div>
+      <nav class="admin-tabs">
+        <button class="admin-tab active" data-view="workspace">ตรวจสอบข้อมูล</button>
+        <button class="admin-tab" data-view="ranking">ตารางจัดอันดับ</button>
+        <button class="admin-tab" data-view="official">รายชื่อผู้สอบทางการ</button>
+      </nav>
 
-        <div class="summary-item">
-          <div class="summary-label">คะแนนสอบสูงสุด</div>
-          <div id="highestExamScore" class="summary-value">0</div>
-          <div class="summary-sub">คะแนน</div>
-        </div>
-
-        <div class="summary-item">
-          <div class="summary-label">คะแนนรวมสูงสุด</div>
-          <div id="highestTotalScore" class="summary-value">0.00</div>
-          <div class="summary-sub">คะแนน</div>
-        </div>
-
-        <div class="summary-item">
-          <div class="summary-label">อายุราชการสูงสุด</div>
-          <div id="maxServiceText" class="summary-value service-value">0 ปี 0 เดือน</div>
-          <div id="maxMeritStep" class="summary-sub">ความดีความชอบสูงสุด 0 ขั้น</div>
-        </div>
+      <section class="summary-strip">
+        <div class="summary-item"><div class="summary-label">ผู้ส่งข้อมูลทั้งหมด</div><div id="totalCandidates" class="summary-value">0</div><div class="summary-sub">รายการ</div></div>
+        <div class="summary-item"><div class="summary-label">อนุมัติแล้ว</div><div id="approvedCount" class="summary-value">0</div><div class="summary-sub">รายการ</div></div>
+        <div class="summary-item"><div class="summary-label">รอตรวจสอบ</div><div id="pendingCount" class="summary-value">0</div><div class="summary-sub">รายการ</div></div>
+        <div class="summary-item"><div class="summary-label">ไม่อนุมัติ</div><div id="rejectedCount" class="summary-value">0</div><div class="summary-sub">รายการ</div></div>
+        <div class="summary-item"><div class="summary-label">ยังไม่ส่งข้อมูล</div><div id="notSubmittedCount" class="summary-value">0</div><div class="summary-sub">จากรายชื่อทางการ</div></div>
       </section>
 
       <section class="toolbar">
-        <div class="field">
-          <input id="searchInput" type="search" placeholder="ค้นหาชื่อหรือเบอร์โทรศัพท์..." autocomplete="off">
-        </div>
-
-        <div class="field">
-          <select id="siteFilter">
-            <option value="">ทุกสนามสอบ</option>
-          </select>
-        </div>
-
+        <div class="field"><input id="searchInput" type="search" placeholder="ค้นหาชื่อ เบอร์โทร หรือเลขสอบ..." autocomplete="off"></div>
+        <div class="field"><select id="siteFilter"><option value="">ทุกสนามสอบ</option></select></div>
+        <div class="field"><select id="statusFilter"><option value="">ทุกสถานะ</option><option value="APPROVED">อนุมัติแล้ว</option><option value="PENDING">รอตรวจสอบ</option><option value="REJECTED">ไม่อนุมัติ</option></select></div>
         <div id="resultCount" class="result-count">แสดง 0 รายการ</div>
       </section>
 
       <section class="table-card">
-        <div id="tableContainer" class="table-wrap">
-          <div class="empty-state">กำลังเตรียมข้อมูล...</div>
-        </div>
+        <div id="tableContainer" class="table-wrap"><div class="empty-state">กำลังเตรียมข้อมูล...</div></div>
       </section>
     </main>
   </div>
 
   <div id="loadingOverlay" class="loading-overlay hidden">
-    <div class="loading-box">
-      <div class="spinner"></div>
-      <strong>กำลังคำนวณและจัดอันดับ</strong>
-      <div class="muted loading-note">กรุณารอสักครู่</div>
-    </div>
+    <div class="loading-box"><div class="spinner"></div><strong id="loadingTitle">กำลังโหลดข้อมูล</strong><div class="muted loading-note">กรุณารอสักครู่</div></div>
   </div>
 
   <div id="detailModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="modal">
+    <div class="modal modal-wide">
       <div class="modal-header">
-        <div>
-          <h2 id="modalName" class="modal-title">รายละเอียดคะแนน</h2>
-          <p id="modalMeta" class="modal-subtitle"></p>
-        </div>
-        <button id="closeModalBtn" class="close-btn" type="button" aria-label="ปิด">×</button>
+        <div><h2 id="modalName" class="modal-title">รายละเอียดผู้สมัคร</h2><p id="modalMeta" class="modal-subtitle"></p></div>
+        <button id="closeModalBtn" class="close-btn" type="button">×</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
     </div>
