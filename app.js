@@ -94,11 +94,35 @@ async function loadOfficial() {
 }
 
 function updateSummary(summary) {
-  setText('totalCandidates', formatNumber(summary.total || 0, 0));
+  const total = Number(summary.total || 0);
+  const officialTotal = Number(summary.officialTotal || 0);
+  const officialSubmitted = Number(summary.officialSubmitted || 0);
+  const needsReview = Number(summary.needsMatchingReview || 0);
+
+  setText('totalCandidates', formatNumber(total, 0));
   setText('approvedCount', formatNumber(summary.approved || 0, 0));
   setText('pendingCount', formatNumber(summary.pending || 0, 0));
   setText('rejectedCount', formatNumber(summary.rejected || 0, 0));
   setText('notSubmittedCount', formatNumber(summary.notSubmitted || 0, 0));
+
+  setText(
+    'responseMatchSummary',
+    'จับคู่รายชื่อทางการแล้ว ' +
+      formatNumber(officialSubmitted, 0) +
+      ' คน' +
+      (needsReview
+        ? ' • ต้องตรวจการจับคู่ ' + formatNumber(needsReview, 0) + ' รายการ'
+        : '')
+  );
+
+  setText(
+    'officialSummary',
+    'จากรายชื่อทางการ ' +
+      formatNumber(officialTotal, 0) +
+      ' คน • ส่งแล้ว ' +
+      formatNumber(officialSubmitted, 0) +
+      ' คน'
+  );
 }
 
 function populateSiteFilter(sites) {
