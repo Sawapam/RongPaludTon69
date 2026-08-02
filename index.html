@@ -50,11 +50,43 @@
         <div class="summary-item"><div class="summary-label">ยังไม่ส่งข้อมูล</div><div id="notSubmittedCount" class="summary-value">0</div><div id="officialSummary" class="summary-sub">จากรายชื่อทางการ</div></div>
       </section>
 
+      <section class="executive-kpi-strip" aria-label="สถิติผู้เข้าสอบ">
+        <div class="executive-kpi"><span>🏆 คะแนนสอบสูงสุด</span><strong id="highestExamScore">0</strong><small>คะแนน</small></div>
+        <div class="executive-kpi"><span>⭐ คะแนนรวมสูงสุด</span><strong id="highestTotalScore">0.00</strong><small>คะแนน</small></div>
+        <div class="executive-kpi"><span>📅 อายุราชการสูงสุด</span><strong id="maxServiceText">0 ปี 0 เดือน</strong></div>
+        <div class="executive-kpi"><span>🎖 ความดีความชอบสูงสุด</span><strong id="maxMeritStep">0</strong><small>ขั้น</small></div>
+        <div class="executive-kpi"><span>🎓 ระดับการศึกษาสูงสุด</span><strong id="highestEducation">-</strong></div>
+      </section>
+
       <section class="toolbar">
         <div class="field"><input id="searchInput" type="search" placeholder="ค้นหาชื่อ เบอร์โทร หรือเลขสอบ..." autocomplete="off"></div>
         <div class="field"><select id="siteFilter"><option value="">ทุกสนามสอบ</option></select></div>
         <div class="field"><select id="statusFilter"><option value="">ทุกสถานะ</option><option value="APPROVED">อนุมัติแล้ว</option><option value="PENDING">รอตรวจสอบ</option><option value="REJECTED">ไม่อนุมัติ</option></select></div>
         <div id="resultCount" class="result-count">แสดง 0 รายการ</div>
+      </section>
+
+      <section id="siteProgressPanel" class="site-progress-panel" aria-live="polite">
+        <div class="site-progress-heading">
+          <div>
+            <div id="siteProgressTitle" class="site-progress-title">👥 ทุกสนามสอบ</div>
+            <div id="siteProgressSubtitle" class="site-progress-subtitle">กำลังสรุปข้อมูล...</div>
+          </div>
+          <div id="siteProgressPercent" class="site-progress-percent">0%</div>
+        </div>
+        <div class="site-progress-track" aria-hidden="true">
+          <div id="siteProgressBar" class="site-progress-bar" style="width:0%"></div>
+        </div>
+        <div class="site-progress-stats">
+          <div><span>ผู้มีสิทธิสอบ</span><strong id="siteOfficialCount">0</strong><small>คน</small></div>
+          <div><span>ส่งข้อมูลแล้ว</span><strong id="siteSubmittedCount">0</strong><small>คน</small></div>
+          <div><span>ยังไม่ส่ง</span><strong id="siteNotSubmittedCount">0</strong><small>คน</small></div>
+          <div><span>กำลังแสดง</span><strong id="siteVisibleCount">0</strong><small>รายการ</small></div>
+        </div>
+      </section>
+
+      <section id="reportActions" class="report-actions hidden">
+        <button id="exportExcelBtn" class="report-btn excel-btn" type="button">📊 ส่งออก Excel</button>
+        <button id="printReportBtn" class="report-btn print-btn" type="button">🖨️ พิมพ์รายงาน A4</button>
       </section>
 
       <section class="table-card">
