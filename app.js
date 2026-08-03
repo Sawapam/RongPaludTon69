@@ -118,7 +118,7 @@ function updateSummary(summary) {
       formatNumber(officialSubmitted, 0) +
       ' คน' +
       (needsReview
-        ? ' • ต้องตรวจการจับคู่ ' + formatNumber(needsReview, 0) + ' รายการ'
+        ? ' • ยังจับคู่กับรายชื่อทางการไม่ได้ ' + formatNumber(needsReview, 0) + ' รายการ'
         : '')
   );
 
