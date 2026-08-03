@@ -564,7 +564,7 @@ function printRankingReport() {
         body{
           margin:0;
           color:#000;
-          font-family:"Sarabun","TH Sarabun New",Tahoma,sans-serif;
+          font-family:"Prompt","TH Sarabun New",Tahoma,sans-serif;
           font-size:10px;
         }
         .report-header{text-align:center;margin-bottom:8px}
