@@ -40,6 +40,7 @@
         <button class="admin-tab active" data-view="workspace">ตรวจสอบข้อมูล</button>
         <button class="admin-tab" data-view="ranking">ตารางจัดอันดับ</button>
         <button class="admin-tab" data-view="official">รายชื่อผู้สอบทางการ</button>
+        <button class="admin-tab" data-view="quality">🧹 คุณภาพข้อมูล</button>
       </nav>
 
       <section class="summary-strip">
@@ -87,6 +88,50 @@
       <section id="reportActions" class="report-actions hidden">
         <button id="exportExcelBtn" class="report-btn excel-btn" type="button">📊 ส่งออก Excel</button>
         <button id="printReportBtn" class="report-btn print-btn" type="button">🖨️ พิมพ์รายงาน A4</button>
+      </section>
+
+      <section id="dataQualityPanel" class="data-quality-panel hidden" aria-live="polite">
+        <div class="data-quality-header">
+          <div>
+            <h2>🧹 คุณภาพข้อมูล</h2>
+            <p id="qualityStatusText">กำลังตรวจสอบฐานข้อมูล...</p>
+          </div>
+          <div id="healthScoreBadge" class="health-score-badge">100%</div>
+        </div>
+
+        <div class="health-track">
+          <div id="healthScoreBar" class="health-score-bar" style="width:100%"></div>
+        </div>
+
+        <div class="quality-summary-grid">
+          <button class="quality-summary-card" type="button" data-quality-section="duplicates">
+            <span>ข้อมูลซ้ำ</span>
+            <strong id="duplicateGroupCount">0</strong>
+            <small>กลุ่ม</small>
+          </button>
+          <button class="quality-summary-card" type="button" data-quality-section="unmatched">
+            <span>ยังจับคู่ไม่ได้</span>
+            <strong id="unmatchedQualityCount">0</strong>
+            <small>รายการ</small>
+          </button>
+          <button class="quality-summary-card" type="button" data-quality-section="similar">
+            <span>ชื่อคล้ายกัน</span>
+            <strong id="similarNameCount">0</strong>
+            <small>คู่</small>
+          </button>
+          <button class="quality-summary-card" type="button" data-quality-section="anomalies">
+            <span>ข้อมูลผิดปกติ</span>
+            <strong id="anomalyCount">0</strong>
+            <small>รายการ</small>
+          </button>
+        </div>
+
+        <div class="quality-section-tabs">
+          <button class="quality-section-tab active" type="button" data-quality-section="duplicates">ข้อมูลซ้ำ</button>
+          <button class="quality-section-tab" type="button" data-quality-section="unmatched">ยังจับคู่ไม่ได้</button>
+          <button class="quality-section-tab" type="button" data-quality-section="similar">ชื่อคล้ายกัน</button>
+          <button class="quality-section-tab" type="button" data-quality-section="anomalies">ข้อมูลผิดปกติ</button>
+        </div>
       </section>
 
       <section class="table-card">
