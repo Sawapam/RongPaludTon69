@@ -3,6 +3,8 @@ const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbw7Dzk1CzR0sGwecF52
 let allRows = [];
 let officialRows = [];
 let adminSummary = {};
+let qualityData = null;
+let qualitySection = 'duplicates';
 let currentView = 'workspace';
 let adminAccessCode = sessionStorage.getItem('rankingAdminKey') || '';
 
@@ -20,6 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('closeModalBtn').addEventListener('click', closeDetail);
   $('detailModal').addEventListener('click', e => { if (e.target.id === 'detailModal') closeDetail(); });
   document.querySelectorAll('.admin-tab').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+  document.querySelectorAll('[data-quality-section]').forEach(btn =>
+    btn.addEventListener('click', () => selectQualitySection(btn.dataset.qualitySection))
+  );
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 
   if (adminAccessCode) {
@@ -53,13 +58,18 @@ async function switchView(view) {
   document.querySelectorAll('.admin-tab').forEach(btn =>
     btn.classList.toggle('active', btn.dataset.view === view)
   );
-  $('statusFilter').disabled = view === 'official';
+  $('statusFilter').disabled = view === 'official' || view === 'quality';
   $('reportActions').classList.toggle('hidden', view !== 'ranking');
+  $('dataQualityPanel').classList.toggle('hidden', view !== 'quality');
+  $('siteProgressPanel').classList.toggle('hidden', view === 'quality');
+  $('searchInput').disabled = view === 'quality';
+  $('siteFilter').disabled = view === 'quality';
   await loadCurrentView();
 }
 
 async function loadCurrentView() {
   if (currentView === 'official') return loadOfficial();
+  if (currentView === 'quality') return loadDataQuality();
   return loadWorkspace();
 }
 
@@ -98,6 +108,342 @@ async function loadOfficial() {
   } finally {
     setLoading(false);
   }
+}
+
+
+async function loadDataQuality() {
+  setLoading(true, 'กำลังตรวจสอบคุณภาพข้อมูล');
+
+  try {
+    const data = await apiGet('dataQuality');
+
+    if (!data.success) {
+      throw new Error(data.message || 'ไม่สามารถตรวจสอบคุณภาพข้อมูลได้');
+    }
+
+    qualityData = data;
+    $('generatedAt').textContent =
+      'ตรวจสอบคุณภาพข้อมูลล่าสุด ' + (data.generatedAt || '-');
+
+    renderDataQuality();
+  } catch (error) {
+    $('tableContainer').innerHTML =
+      '<div class="error-state">' +
+      escapeHtml(error.message || 'เกิดข้อผิดพลาดจากระบบ') +
+      '</div>';
+  } finally {
+    setLoading(false);
+  }
+}
+
+function selectQualitySection(section) {
+  if (!['duplicates', 'unmatched', 'similar', 'anomalies'].includes(section)) {
+    return;
+  }
+
+  qualitySection = section;
+
+  document.querySelectorAll('.quality-section-tab').forEach(btn => {
+    btn.classList.toggle(
+      'active',
+      btn.dataset.qualitySection === qualitySection
+    );
+  });
+
+  if (currentView === 'quality' && qualityData) {
+    renderDataQualityTable();
+  }
+}
+
+function renderDataQuality() {
+  const summary = qualityData && qualityData.summary
+    ? qualityData.summary
+    : {};
+
+  const healthScore = Number(summary.healthScore || 0);
+  const ready = Boolean(summary.readyForReport);
+
+  setText(
+    'qualityStatusText',
+    ready
+      ? 'ฐานข้อมูลพร้อมออกรายงานอย่างเป็นทางการ'
+      : 'พบข้อมูลที่ต้องตรวจสอบก่อนออกรายงาน'
+  );
+
+  setText('healthScoreBadge', formatNumber(healthScore, 2) + '%');
+  $('healthScoreBadge').classList.toggle('ready', ready);
+  $('healthScoreBadge').classList.toggle('warning', !ready);
+  $('healthScoreBar').style.width =
+    Math.max(0, Math.min(100, healthScore)) + '%';
+
+  setText(
+    'duplicateGroupCount',
+    formatNumber(summary.duplicateGroupCount || 0, 0)
+  );
+  setText(
+    'unmatchedQualityCount',
+    formatNumber(summary.unmatchedCount || 0, 0)
+  );
+  setText(
+    'similarNameCount',
+    formatNumber(summary.similarNameCount || 0, 0)
+  );
+  setText(
+    'anomalyCount',
+    formatNumber(summary.anomalyCount || 0, 0)
+  );
+
+  renderDataQualityTable();
+}
+
+function renderDataQualityTable() {
+  if (!qualityData) {
+    return emptyTable();
+  }
+
+  if (qualitySection === 'duplicates') {
+    return renderDuplicateGroups();
+  }
+
+  if (qualitySection === 'unmatched') {
+    return renderUnmatchedRows();
+  }
+
+  if (qualitySection === 'similar') {
+    return renderSimilarNames();
+  }
+
+  return renderAnomalyRows();
+}
+
+function renderDuplicateGroups() {
+  const groups = Array.isArray(qualityData.duplicateGroups)
+    ? qualityData.duplicateGroups
+    : [];
+
+  setCount(groups.length, groups.length);
+
+  if (!groups.length) {
+    $('tableContainer').innerHTML =
+      '<div class="quality-success-state">✓ ไม่พบข้อมูลซ้ำ</div>';
+    return;
+  }
+
+  $('tableContainer').innerHTML = groups.map((group, groupIndex) => `
+    <section class="duplicate-group">
+      <div class="duplicate-group-header">
+        <div>
+          <strong>${escapeHtml(group.label)}</strong>
+          <span>${escapeHtml(group.key)} • ${formatNumber(group.count, 0)} รายการ</span>
+        </div>
+        <span class="quality-warning-chip">ต้องเลือกเก็บ 1 รายการ</span>
+      </div>
+
+      <div class="duplicate-options">
+        ${group.rows.map((row, rowIndex) => `
+          <label class="duplicate-option">
+            <input
+              type="radio"
+              name="duplicateKeep${groupIndex}"
+              value="${escapeAttr(row.sourceRow)}"
+              ${rowIndex === 0 ? 'checked' : ''}
+            >
+            <span class="duplicate-option-body">
+              <strong>${escapeHtml(row.name || '-')}</strong>
+              <small>
+                แถว ${formatNumber(row.sourceRow, 0)}
+                • ${escapeHtml(row.fullExamId || '-')}
+                • ${escapeHtml(row.phoneMasked || row.phone || '-')}
+                • ${escapeHtml(row.examSite || '-')}
+                • ${escapeHtml(statusText(row.status))}
+              </small>
+            </span>
+          </label>
+        `).join('')}
+      </div>
+
+      <div class="duplicate-actions">
+        <button
+          class="delete-duplicate-btn"
+          type="button"
+          onclick="deleteDuplicateGroup(${groupIndex})"
+        >
+          เก็บรายการที่เลือก และลบรายการซ้ำ
+        </button>
+      </div>
+    </section>
+  `).join('');
+}
+
+async function deleteDuplicateGroup(groupIndex) {
+  const groups = qualityData && Array.isArray(qualityData.duplicateGroups)
+    ? qualityData.duplicateGroups
+    : [];
+
+  const group = groups[groupIndex];
+  if (!group) return;
+
+  const selected = document.querySelector(
+    `input[name="duplicateKeep${groupIndex}"]:checked`
+  );
+
+  if (!selected) {
+    alert('กรุณาเลือกรายการที่ต้องการเก็บ');
+    return;
+  }
+
+  const keepSourceRow = Number(selected.value);
+  const deleteSourceRows = group.rows
+    .map(row => Number(row.sourceRow))
+    .filter(rowNumber => rowNumber !== keepSourceRow);
+
+  const keepRow = group.rows.find(
+    row => Number(row.sourceRow) === keepSourceRow
+  );
+
+  const confirmed = window.confirm(
+    'ยืนยันเก็บรายการนี้\\n\\n' +
+    (keepRow ? keepRow.name : '') +
+    ' • แถว ' + keepSourceRow +
+    '\\n\\nและลบรายการซ้ำอีก ' +
+    deleteSourceRows.length +
+    ' รายการหรือไม่?\\n\\nรายการที่ลบจะถูกสำรองไว้ในชีต DataQualityArchive'
+  );
+
+  if (!confirmed) return;
+
+  setLoading(true, 'กำลังสำรองและลบข้อมูลซ้ำ');
+
+  try {
+    const data = await apiPost({
+      action: 'adminDeleteDuplicates',
+      key: adminAccessCode,
+      duplicateType: group.type,
+      duplicateKey: group.key,
+      keepSourceRow,
+      deleteSourceRows
+    });
+
+    if (!data.success) {
+      throw new Error(data.message || 'ลบข้อมูลซ้ำไม่สำเร็จ');
+    }
+
+    await loadWorkspace();
+    await loadDataQuality();
+  } catch (error) {
+    alert(error.message || 'เกิดข้อผิดพลาดจากระบบ');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderUnmatchedRows() {
+  const rows = Array.isArray(qualityData.unmatchedRows)
+    ? qualityData.unmatchedRows
+    : [];
+
+  setCount(rows.length, rows.length);
+
+  if (!rows.length) {
+    $('tableContainer').innerHTML =
+      '<div class="quality-success-state">✓ ทุกข้อมูลจับคู่กับรายชื่อทางการแล้ว</div>';
+    return;
+  }
+
+  const body = rows.map(row => `
+    <tr>
+      <td>${formatNumber(row.sourceRow, 0)}</td>
+      <td class="text-left">${escapeHtml(row.name || '-')}</td>
+      <td>${escapeHtml(row.fullExamId || '-')}</td>
+      <td>${escapeHtml(row.last3 || '-')}</td>
+      <td>${escapeHtml(row.phoneMasked || row.phone || '-')}</td>
+      <td class="text-left">${escapeHtml(row.examSite || '-')}</td>
+      <td>${escapeHtml(statusText(row.status))}</td>
+    </tr>
+  `).join('');
+
+  $('tableContainer').innerHTML = tableHtml(
+    ['แถว', 'ชื่อ-สกุล', 'เลขประจำตัวสอบ', '3 หลักท้าย', 'เบอร์โทร', 'สนามสอบ', 'สถานะ'],
+    body
+  );
+}
+
+function renderSimilarNames() {
+  const pairs = Array.isArray(qualityData.similarNames)
+    ? qualityData.similarNames
+    : [];
+
+  setCount(pairs.length, pairs.length);
+
+  if (!pairs.length) {
+    $('tableContainer').innerHTML =
+      '<div class="quality-success-state">✓ ไม่พบชื่อที่คล้ายกันผิดปกติ</div>';
+    return;
+  }
+
+  const body = pairs.map(pair => `
+    <tr>
+      <td>${formatNumber(pair.similarity, 2)}%</td>
+      <td class="text-left">
+        <strong>${escapeHtml(pair.left.name)}</strong>
+        <div class="muted">แถว ${formatNumber(pair.left.sourceRow, 0)} • ${escapeHtml(pair.left.fullExamId || '-')}</div>
+      </td>
+      <td class="text-left">
+        <strong>${escapeHtml(pair.right.name)}</strong>
+        <div class="muted">แถว ${formatNumber(pair.right.sourceRow, 0)} • ${escapeHtml(pair.right.fullExamId || '-')}</div>
+      </td>
+      <td>${escapeHtml(pair.left.examSite || '-')}</td>
+      <td>${escapeHtml(pair.right.examSite || '-')}</td>
+    </tr>
+  `).join('');
+
+  $('tableContainer').innerHTML = tableHtml(
+    ['ความคล้าย', 'รายการที่ 1', 'รายการที่ 2', 'สนามสอบ 1', 'สนามสอบ 2'],
+    body
+  );
+}
+
+function renderAnomalyRows() {
+  const rows = Array.isArray(qualityData.anomalyRows)
+    ? qualityData.anomalyRows
+    : [];
+
+  setCount(rows.length, rows.length);
+
+  if (!rows.length) {
+    $('tableContainer').innerHTML =
+      '<div class="quality-success-state">✓ ไม่พบข้อมูลผิดปกติ</div>';
+    return;
+  }
+
+  const body = rows.map(row => `
+    <tr>
+      <td>${formatNumber(row.sourceRow, 0)}</td>
+      <td class="text-left">${escapeHtml(row.name || '-')}</td>
+      <td>${escapeHtml(row.fullExamId || '-')}</td>
+      <td>${escapeHtml(row.phoneMasked || row.phone || '-')}</td>
+      <td class="text-left">
+        ${(row.problems || []).map(problem =>
+          `<span class="problem-chip">${escapeHtml(problem)}</span>`
+        ).join('')}
+      </td>
+    </tr>
+  `).join('');
+
+  $('tableContainer').innerHTML = tableHtml(
+    ['แถว', 'ชื่อ-สกุล', 'เลขประจำตัวสอบ', 'เบอร์โทร', 'ปัญหาที่พบ'],
+    body
+  );
+}
+
+function statusText(status) {
+  const map = {
+    APPROVED: 'อนุมัติแล้ว',
+    PENDING: 'รอตรวจสอบ',
+    REJECTED: 'ไม่อนุมัติ'
+  };
+
+  return map[status] || status || '-';
 }
 
 function updateSummary(summary) {
@@ -153,6 +499,7 @@ function populateSiteFilter(sites) {
 function renderCurrentView() {
   if (currentView === 'official') return renderOfficial();
   if (currentView === 'ranking') return renderRanking();
+  if (currentView === 'quality') return renderDataQuality();
   return renderWorkspace();
 }
 
@@ -676,7 +1023,14 @@ function rankLabel(rank) {
 }
 
 function closeDetail() { $('detailModal').classList.add('hidden'); document.body.style.overflow = ''; }
-function logout() { adminAccessCode=''; allRows=[]; sessionStorage.removeItem('rankingAdminKey'); showLoginView(); }
+function logout() {
+  adminAccessCode = '';
+  allRows = [];
+  officialRows = [];
+  qualityData = null;
+  sessionStorage.removeItem('rankingAdminKey');
+  showLoginView();
+}
 function showAdminView() { $('loginView').classList.add('hidden'); $('adminView').classList.remove('hidden'); }
 function showLoginView() { $('adminView').classList.add('hidden'); $('loginView').classList.remove('hidden'); setTimeout(() => $('accessCode').focus(),0); }
 function showLoginError(message) { $('loginError').textContent=message; $('loginError').classList.remove('hidden'); }
